@@ -12,14 +12,11 @@ struct Image {
         x(0),
         y(0)
     {}
-    void paint(juce::Graphics& g, juce::Rectangle<int> bounds) {
-        const auto width = bounds.getWidth();
-        const auto height = bounds.getHeight();
+    void paint(juce::Graphics& g, const juce::Rectangle<float>& bounds, float maxWidth, float maxHeight) {
         g.drawImageAt(image, x, y);
-        //g.drawImage(image, juce::Rectangle<float>(x, y, width, height));
     }
     juce::Image image;
-    int x, y;
+    float x, y;
 };
 
 struct  GIFImageFormat :
@@ -418,17 +415,42 @@ struct  GIFImageFormat :
     std::unique_ptr<GIFLoader> loader;
 };
 
+struct JIF {
+    JIF():
+        images(),
+        maxWidth(0), maxHeight(0),
+        readIdx(0)
+    {}
+    void addImg(const Image& img) {
+        images.push_back(img);
+        const auto w = img.image.getWidth();
+        const auto h = img.image.getHeight();
+        maxWidth = maxWidth < w ? w : maxWidth;
+        maxHeight = maxHeight < h ? h : maxHeight;
+    }
+    const size_t numImages() const noexcept { return images.size(); }
+    void paint(juce::Graphics& g, const juce::Rectangle<float>& bounds) {
+        if (readIdx >= numImages()) {
+            readIdx = 0;
+            g.fillAll(juce::Colours::white);
+        }
+        images[readIdx].paint(g, bounds, maxWidth, maxHeight);
+    }
+    void operator++() { ++readIdx; }
+
+    std::vector<Image> images;
+    float maxWidth, maxHeight;
+    int readIdx;
+};
+
 struct MainComponent :
     public juce::Component,
     public juce::Timer
 {
     MainComponent();
-    
     void paint (juce::Graphics&) override;
     void timerCallback() override;
-private:
-    std::vector<Image> images;
-    int rIdx;
+    JIF jif;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };
