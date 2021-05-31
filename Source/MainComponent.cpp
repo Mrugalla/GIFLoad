@@ -4,25 +4,31 @@ MainComponent::MainComponent() :
     images(),
     rIdx(-1)
 {
-    juce::MemoryInputStream memoryInputStream(BinaryData::dance_gif, BinaryData::dance_gifSize, true);
+    //BinaryData::dance_gif, BinaryData::dance_gifSize, true);
+    //BinaryData::drinkLove_gif, BinaryData::drinkLove_gifSize, true);
+    //BinaryData::installationFailed_gif, BinaryData::installationFailed_gifSize, true);
+    juce::MemoryInputStream memoryInputStream(BinaryData::installationFailed_gif, BinaryData::installationFailed_gifSize, true);
     GIFImageFormat imageFormat;
     if(imageFormat.readHeader(memoryInputStream))
         while (!memoryInputStream.isExhausted()) {
-            auto img = imageFormat.decodeImage(memoryInputStream);
-            if (img.isValid())
-                images.push_back(img.createCopy());
+            const auto img = imageFormat.decodeImage();
+            if (img.image.isValid())
+                images.push_back(img);
         }
 
     setOpaque(true);
-    setSize (600, 400);
+    setSize(600, 400);
     startTimerHz(8);
 }
 
 void MainComponent::paint (juce::Graphics& g) {
-    ++rIdx;
-    if (rIdx >= images.size())
+    if (rIdx >= images.size()) {
         rIdx = 0;
-    g.fillAll(juce::Colours::white);
-    g.drawImage(images[rIdx], getLocalBounds().toFloat());
+        g.fillAll(juce::Colours::white);
+    }
+    images[rIdx].paint(g, getLocalBounds());
 }
-void MainComponent::timerCallback() { repaint(); }
+void MainComponent::timerCallback() {
+    ++rIdx;
+    repaint();
+}

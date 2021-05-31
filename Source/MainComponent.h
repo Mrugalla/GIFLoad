@@ -1,6 +1,27 @@
 #pragma once
 #include <JuceHeader.h>
 
+struct Image {
+    Image() :
+        image(),
+        x(0),
+        y(0)
+    {}
+    Image(const juce::Image&& img) :
+        image(img),
+        x(0),
+        y(0)
+    {}
+    void paint(juce::Graphics& g, juce::Rectangle<int> bounds) {
+        const auto width = bounds.getWidth();
+        const auto height = bounds.getHeight();
+        g.drawImageAt(image, x, y);
+        //g.drawImage(image, juce::Rectangle<float>(x, y, width, height));
+    }
+    juce::Image image;
+    int x, y;
+};
+
 struct  GIFImageFormat :
     public juce::ImageFileFormat
 {
@@ -27,24 +48,20 @@ struct  GIFImageFormat :
         }
 
         void loadAnotherImage() {
-            for (;;)
-            {
-                if (input.read(buf, 1) != 1 || buf[0] == ';')
-                    break;
+            for (;;) {
+                if (input.read(buf, 1) != 1 || buf[0] == ';') break;
 
-                if (buf[0] == '!')
-                {
+                if (buf[0] == '!') {
                     if (readExtension())
                         continue;
-
                     break;
                 }
 
-                if (buf[0] != ',')
-                    continue;
+                if (buf[0] != ',') continue;
 
-                if (input.read(buf, 9) == 9)
-                {
+                if (input.read(buf, 9) == 9) {
+                    const auto imageX = (int)juce::ByteOrder::littleEndianShort(buf + 0);
+                    const auto imageY = (int)juce::ByteOrder::littleEndianShort(buf + 2);
                     imageWidth = (int)juce::ByteOrder::littleEndianShort(buf + 4);
                     imageHeight = (int)juce::ByteOrder::littleEndianShort(buf + 6);
 
@@ -54,10 +71,12 @@ struct  GIFImageFormat :
                         if (!readPalette(numColours))
                             break;
 
-                    image = juce::Image(transparent >= 0 ? juce::Image::ARGB : juce::Image::RGB,
-                        imageWidth, imageHeight, transparent >= 0);
+                    const auto pxlFormat = transparent >= 0 ? juce::Image::ARGB : juce::Image::RGB;
+                    image = juce::Image(pxlFormat, imageWidth, imageHeight, transparent >= 0);
+                    image.x = imageX;
+                    image.y = imageY;
 
-                    image.getProperties()->set("originalImageHadAlpha", transparent >= 0);
+                    image.image.getProperties()->set("originalImageHadAlpha", transparent >= 0);
 
                     readImage((buf[8] & 0x40) != 0, transparent);
                 }
@@ -66,8 +85,8 @@ struct  GIFImageFormat :
             }
         }
 
-        juce::Image image;
-
+        Image image;
+    private:
         juce::InputStream& input;
         juce::uint8 buffer[260];
         juce::uint8 buf[16];
@@ -84,16 +103,13 @@ struct  GIFImageFormat :
         int stack[2 * maxGifCode];
         int* sp;
 
-        bool getSizeFromHeader()
-        {
+        bool getSizeFromHeader() {
             char b[6];
 
             if (input.read(b, 6) == 6
                 && (strncmp("GIF87a", b, 6) == 0
-                    || strncmp("GIF89a", b, 6) == 0))
-            {
-                if (input.read(b, 4) == 4)
-                {
+                    || strncmp("GIF89a", b, 6) == 0)) {
+                if (input.read(b, 4) == 4) {
                     imageWidth = (int)juce::ByteOrder::littleEndianShort(b);
                     imageHeight = (int)juce::ByteOrder::littleEndianShort(b + 2);
                     return imageWidth > 0 && imageHeight > 0;
@@ -110,15 +126,12 @@ struct  GIFImageFormat :
                 palette[i].setARGB(0xff, rgb[0], rgb[1], rgb[2]);
                 palette[i].premultiply();
             }
-
             return true;
         }
 
-        int readDataBlock(juce::uint8* const dest)
-        {
+        int readDataBlock(juce::uint8* const dest) {
             juce::uint8 n;
-            if (input.read(&n, 1) == 1)
-            {
+            if (input.read(&n, 1) == 1) {
                 dataBlockIsZero = (n == 0);
 
                 if (dataBlockIsZero || (input.read(dest, n) == n))
@@ -128,8 +141,7 @@ struct  GIFImageFormat :
             return -1;
         }
 
-        int readExtension()
-        {
+        int readExtension() {
             juce::uint8 type;
             if (input.read(&type, 1) != 1)
                 return false;
@@ -137,8 +149,7 @@ struct  GIFImageFormat :
             juce::uint8 b[260];
             int n = 0;
 
-            if (type == 0xf9)
-            {
+            if (type == 0xf9) {
                 n = readDataBlock(b);
                 if (n < 0)
                     return 1;
@@ -147,8 +158,7 @@ struct  GIFImageFormat :
                     transparent = b[3];
             }
 
-            do
-            {
+            do {
                 n = readDataBlock(b);
             } while (n > 0);
 
@@ -158,14 +168,12 @@ struct  GIFImageFormat :
         void clearTable()
         {
             int i;
-            for (i = 0; i < clearCode; ++i)
-            {
+            for (i = 0; i < clearCode; ++i) {
                 table[0][i] = 0;
                 table[1][i] = i;
             }
 
-            for (; i < maxGifCode; ++i)
-            {
+            for (; i < maxGifCode; ++i) {
                 table[0][i] = 0;
                 table[1][i] = 0;
             }
@@ -317,8 +325,7 @@ struct  GIFImageFormat :
             return result;
         }
 
-        bool readImage(const int interlace, const int transparent)
-        {
+        bool readImage(const int interlace, const int transparent) {
             juce::uint8 c;
             if (input.read(&c, 1) != 1)
                 return false;
@@ -330,12 +337,11 @@ struct  GIFImageFormat :
 
             int xpos = 0, ypos = 0, yStep = 8, pass = 0;
 
-            const juce::Image::BitmapData destData(image, juce::Image::BitmapData::writeOnly);
+            const juce::Image::BitmapData destData(image.image, juce::Image::BitmapData::writeOnly);
             juce::uint8* p = destData.getPixelPointer(0, 0);
-            const bool hasAlpha = image.hasAlphaChannel();
+            const bool hasAlpha = image.image.hasAlphaChannel();
 
-            for (;;)
-            {
+            for (;;) {
                 const int index = readLZWByte();
                 if (index < 0)
                     break;
@@ -347,16 +353,13 @@ struct  GIFImageFormat :
 
                 p += destData.pixelStride;
 
-                if (++xpos == destData.width)
-                {
+                if (++xpos == destData.width) {
                     xpos = 0;
 
-                    if (interlace)
-                    {
+                    if (interlace) {
                         ypos += yStep;
 
-                        while (ypos >= destData.height)
-                        {
+                        while (ypos >= destData.height) {
                             switch (++pass)
                             {
                             case 1:     ypos = 4; yStep = 8; break;
@@ -366,8 +369,7 @@ struct  GIFImageFormat :
                             }
                         }
                     }
-                    else
-                    {
+                    else {
                         if (++ypos >= destData.height)
                             break;
                     }
@@ -386,7 +388,6 @@ struct  GIFImageFormat :
     bool usesFileExtension(const juce::File& f) override { return f.hasFileExtension("gif"); };
     bool canUnderstand(juce::InputStream& in) override {
         char header[4];
-
         return (in.read(header, sizeof(header)) == (int)sizeof(header))
             && header[0] == 'G'
             && header[1] == 'I'
@@ -401,8 +402,8 @@ struct  GIFImageFormat :
         return true;
 #endif
     }
-
-    juce::Image decodeImage(juce::InputStream&) override {
+    
+    Image decodeImage() {
         loader->loadAnotherImage();
         return loader->image;
     };
@@ -412,6 +413,7 @@ struct  GIFImageFormat :
         jassertfalse; // writing isn't implemented for GIFs!
         return false;
     }
+    juce::Image decodeImage(juce::InputStream& in) override { return juce::Image(); };
 
     std::unique_ptr<GIFLoader> loader;
 };
@@ -425,7 +427,7 @@ struct MainComponent :
     void paint (juce::Graphics&) override;
     void timerCallback() override;
 private:
-    std::vector<juce::Image> images;
+    std::vector<Image> images;
     int rIdx;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
