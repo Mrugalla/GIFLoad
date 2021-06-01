@@ -1,20 +1,16 @@
 #include "MainComponent.h"
 
 MainComponent::MainComponent() :
-    jif()
+    jif(BinaryData::dance_gif, BinaryData::dance_gifSize)
 {
-    // things to copy into the memoryInputStream:
-    //BinaryData::dance_gif, BinaryData::dance_gifSize, true);
-    //BinaryData::drinkLove_gif, BinaryData::drinkLove_gifSize, true);
-    //BinaryData::installationFailed_gif, BinaryData::installationFailed_gifSize, true);
-    juce::MemoryInputStream memoryInputStream(BinaryData::dance_gif, BinaryData::dance_gifSize, true);
-    GIFImageFormat imageFormat;
-    if(imageFormat.readHeader(memoryInputStream))
-        while (!memoryInputStream.isExhausted()) {
-            const auto img = imageFormat.decodeImage();
-            if (img.image.isValid())
-                jif.addImg(img);
-        }
+    /* things to copy into the jif constructor:
+     
+    BinaryData::dance_gif, BinaryData::dance_gifSize
+    BinaryData::drinkLove_gif, BinaryData::drinkLove_gifSize
+    BinaryData::installationFailed_gif, BinaryData::installationFailed_gifSize
+
+    */
+
     setOpaque(true);
     setSize(600, 400);
     startTimerHz(8);
