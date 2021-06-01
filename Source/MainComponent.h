@@ -13,13 +13,19 @@ struct Image {
         y(0)
     {}
     void paint(juce::Graphics& g, const juce::Rectangle<float>& bounds, float maxWidth, float maxHeight) {
-        g.drawImageAt(image, x, y);
+        const auto imgWidth = static_cast<float>(image.getWidth());
+        const auto imgHeight = static_cast<float>(image.getHeight());
+        const auto nX = x / maxWidth * bounds.getWidth();
+        const auto nY = y / maxHeight * bounds.getHeight();
+        const auto nWidth = imgWidth / maxWidth * bounds.getWidth();
+        const auto nHeight = imgHeight / maxHeight * bounds.getHeight();
+        g.drawImage(image, { nX, nY, nWidth, nHeight });
     }
     juce::Image image;
     float x, y;
 };
 
-struct  GIFImageFormat :
+struct GIFImageFormat :
     public juce::ImageFileFormat
 {
     struct GIFLoader
@@ -437,6 +443,7 @@ struct JIF {
         images[readIdx].paint(g, bounds, maxWidth, maxHeight);
     }
     void operator++() { ++readIdx; }
+    void resetAnimation(){ readIdx = 0; }
 
     std::vector<Image> images;
     float maxWidth, maxHeight;
@@ -450,6 +457,7 @@ struct MainComponent :
     MainComponent();
     void paint (juce::Graphics&) override;
     void timerCallback() override;
+    void resized() override;
     JIF jif;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
