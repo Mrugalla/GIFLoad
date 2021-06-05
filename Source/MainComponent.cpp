@@ -1,7 +1,7 @@
 #include "MainComponent.h"
 
 MainComponent::MainComponent() :
-    jif(BinaryData::dance_gif, BinaryData::dance_gifSize)
+    jif(BinaryData::drinkLove_gif, BinaryData::drinkLove_gifSize)
 {
     /* things to copy into the jif constructor:
      
@@ -10,7 +10,7 @@ MainComponent::MainComponent() :
     BinaryData::installationFailed_gif, BinaryData::installationFailed_gifSize
 
     */
-
+    
     setOpaque(true);
     setSize(600, 400);
     startTimerHz(8);
