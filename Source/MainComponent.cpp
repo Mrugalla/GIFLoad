@@ -12,6 +12,7 @@ MainComponent::MainComponent() :
     */
     
     setOpaque(true);
+    setBufferedToImage(true);
     setSize(600, 400);
     startTimerHz(8);
 }
